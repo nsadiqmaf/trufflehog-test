@@ -1,0 +1,63 @@
+pipeline {
+
+    options {
+            buildDiscarder(logRotator(numToKeepStr: "2"))
+	    }
+
+    agent any
+    
+    environment {
+        ECR_REPO = '243060292047.dkr.ecr.eu-west-1.amazonaws.com'
+        BUILD_URL='https://github.com/majidalfuttaim/grid2-spark-jobs.git'
+        JAVA_HOME='/usr/local/jdk-11.0.1'
+	teams_url = "https://outlook.office.com/webhook/1669c5eb-42e3-4621-bc36-82d12a117c66@b09ab65e-9063-4862-afa2-d75ab48bba74/JenkinsCI/2c7ca80ebdd74714a90cd3fb04d3111f/dc3d39da-fd4a-490c-9605-db99df6b469c"
+        }
+
+    stages {
+        
+        stage('Spark-Job Commit Details') {
+            steps {
+	             /*checkout([$class: 'GitSCM',
+		         branches: [[name: '**']],
+			 doGenerateSubmoduleConfigurations: false,
+			 extensions: [[$class: 'CleanCheckout']],
+			 submoduleCfg: [],
+			 userRemoteConfigs: [[credentialsId: 'nsadiqmaf-github', url: 'https://github.com/nsadiqmaf/trufflehog-test.git']]
+		     ])	 */
+                script {
+                def tmp_param =''
+                git_log =  sh (script: 'git log -n 1 --pretty=format:"%h - %an, %ar : %s" |cut -d# -f2 | cut -d" " -f1', returnStdout: true).trim()
+                env.pr_merge = git_log
+                echo "${env.pr_merge}"
+                git_author = sh (script: 'git log -n 1 --pretty=format:"%h - %an, %ar : %s" |cut -d":" -f2 |cut -d"/" -f1 | cut -d" " -f7', returnStdout: true).trim()
+                env.pr_author = git_author
+                echo "${env.pr_author}"
+                git_approver = sh (script: 'git log -n 1 --pretty=format:"%h - %an, %ar : %s" | cut -d"-" -f2 | cut -d"," -f1', returnStdout: true).trim()
+                env.pr_approver = git_approver
+                echo "${env.pr_approver}"
+                git_branch = "${env.BRANCH_NAME}"
+                //git_branch = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+                env.gitbranch = git_branch
+                echo "${env.gitbranch}"
+                git_date = sh (script: 'date +%d%m%y%H%M', returnStdout: true).trim()
+                env.gitdate = git_date
+                echo "${env.gitdate}"		
+                }
+            }
+        }
+        stage('Test Cases Spark Build') {
+            when {
+	       branch 'PR-*'
+            }
+            steps {
+                trufflehog https://github.com/nsadiqmaf/trufflehog-test.git
+                
+		}
+	}
+	
+   post {	
+        always {
+            cleanWs()
+        }
+    }
+}
